@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: mdk-assignment
+Version: 0.1.0
+Summary: MDK practical assignment: geometric kinematics and control of a UR5e arm
+Requires-Python: >=3.11
+Requires-Dist: mujoco==3.10.0
+Requires-Dist: numpy<3,>=1.26
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: imageio[ffmpeg]>=2.34
+Requires-Dist: matplotlib>=3.8
