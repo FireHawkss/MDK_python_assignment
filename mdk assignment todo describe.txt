@@ -1,0 +1,6 @@
+mdk assignment todo
+- describe robot, frames, joints, dof
+- choose reference frame
+- calc jacobian and end effector pose
+- make controller based on the mass spring damper theory we saw in class
+- simulate the thing
