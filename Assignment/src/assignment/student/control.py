@@ -5,8 +5,7 @@ import numpy as np
 
 from assignment.student import config as default_settings
 from assignment.student.kinematics import ChainData, update_kinematics
-from assignment.student.lie_groups import se3_inverse # Complete the import statement with any other necessary functions from lie_groups if needed.
-
+from assignment.student.lie_groups import se3_inverse, skew, unskew
 
 def spring_wrench(H_ee_d, k_rot: float, k_trans: float, k_coupling: float = 0.0) -> np.ndarray:
     """Wrench of a virtual spatial spring pulling the end-effector to a target
@@ -28,8 +27,41 @@ def spring_wrench(H_ee_d, k_rot: float, k_trans: float, k_coupling: float = 0.0)
     if H_ee_d.shape != (4, 4):
         raise ValueError(f"expected a 4x4 homogeneous matrix, got {H_ee_d.shape}")
 
-    # Fill in your solution here.
-    raise NotImplementedError("spring_wrench is not implemented yet")
+    # Relative rotation and translation
+    R_ee_d = H_ee_d[:3, :3]
+    p_ee_d = H_ee_d[:3, 3]
+
+    R_d_ee = R_ee_d.T
+    p_tilde = skew(p_ee_d)
+
+    # Co-stiffness matrices (Equation 6)
+    G_o = (k_rot / 2) * np.eye(3)
+    G_t = (k_trans / 2) * np.eye(3)
+    G_c = (k_coupling / 2) * np.eye(3)
+
+    # Skew-symmetric part of a matrix
+    def asym(A):
+        return 0.5 * (A - A.T)
+
+    # Moment (Equation 5)
+    m_tilde = (
+        -2 * asym(G_o @ R_ee_d)
+        - asym(G_t @ R_d_ee @ p_tilde @ p_tilde @ R_ee_d)
+        - 2 * asym(G_c @ p_tilde @ R_ee_d)
+    )
+
+    # Force (Equation 5)
+    f_tilde = (
+        - R_d_ee @ asym(G_t @ p_tilde) @ R_ee_d
+        - asym(G_t @ R_d_ee @ p_tilde @ R_ee_d)
+        - 2 * asym(G_c @ R_ee_d)
+    )
+
+    # Convert skew-symmetric matrices to vectors
+    m = unskew(m_tilde)
+    f = unskew(f_tilde)
+
+    return np.concatenate((m, f))
 
 
 def clip_wrench(wrench, max_moment=None, max_force=None) -> np.ndarray:
@@ -45,8 +77,22 @@ def clip_wrench(wrench, max_moment=None, max_force=None) -> np.ndarray:
     """
     wrench = np.array(wrench, dtype=float)
 
-    # Fill in your solution here.
-    raise NotImplementedError("clip_wrench is not implemented yet")
+    m = wrench[:3]
+    f = wrench[3:]
+
+    # Clip moment (Equation 7)
+    m_norm = np.linalg.norm(m)
+
+    if max_moment is not None and m_norm > max_moment:
+        m *= max_moment / m_norm
+
+    # Clip force (Equation 7)
+    f_norm = np.linalg.norm(f)
+
+    if max_force is not None and f_norm > max_force:
+        f *= max_force / f_norm
+
+    return wrench
 
 
 def control_wrench(
@@ -66,36 +112,55 @@ def control_wrench(
     """Wrench of a virtual spring and damper connecting the end-effector to a target.
 
     The spring pulls the end-effector towards the target pose, and the damper
-    opposes the motion of the end-effector *relative to the target*.
-
-    Args:
-        H_ee_w: H_ee^w(q), the pose of the end-effector frame relative to the world frame.
-        twist_ee: T_ee^{ee,w}, the twist of the end-effector
-            relative to the world expressed in the end-effector frame.
-        H_d_w: H_d^w, the pose of the target frame relative to the world frame.
-        twist_d: T_d^{d,w}, the twist of the target frame relative to the
-            world, expressed in the target frame. Zero for a static target.
-        k_rot: rotational stiffness.
-        k_trans: translational stiffness.
-        k_coupling: coupling stiffness.
-        d_rot: rotational damping.
-        d_trans: translational damping.
-
-    Returns:
-        W^{ee,n}, the wrench on the end-effector expressed in the end-effector
-        frame, an array of 6 numbers (m, f).
+    opposes the motion of the end-effector relative to the target.
     """
     H_ee_w = np.asarray(H_ee_w, dtype=float)
     H_d_w = np.asarray(H_d_w, dtype=float)
     twist_ee = np.asarray(twist_ee, dtype=float)
     twist_d = np.asarray(twist_d, dtype=float)
+
     if twist_ee.shape != (6,) or twist_d.shape != (6,):
         raise ValueError(
             f"expected twists of shape (6,), got {twist_ee.shape} and {twist_d.shape}"
         )
 
-    # Fill in your solution here.
-    raise NotImplementedError("control_wrench is not implemented yet")
+    # Relative pose: end-effector expressed in target frame (Equation 4)
+    H_ee_d = se3_inverse(H_d_w) @ H_ee_w
+
+    # Spring wrench (Equation 5)
+    W_spring = spring_wrench(
+        H_ee_d,
+        k_rot,
+        k_trans,
+        k_coupling
+    )
+
+    # Clip only the spring wrench (Equation 7)
+    W_spring = clip_wrench(W_spring, max_moment, max_force)
+
+    # Target frame expressed in end-effector frame
+    H_d_ee = se3_inverse(H_ee_d)
+
+    R = H_d_ee[:3, :3]
+    p = H_d_ee[:3, 3]
+
+    # Adjoint transformation of the target twist
+    omega_d_ee = R @ twist_d[:3]
+    v_d_ee = R @ twist_d[3:] + np.cross(p, omega_d_ee)
+
+    twist_d_ee = np.concatenate((omega_d_ee, v_d_ee))
+
+    # Relative twist (Equation 8)
+    twist_rel = twist_ee - twist_d_ee
+
+    # Damping wrench (Equation 9)
+    W_damping = np.concatenate((
+        -d_rot * twist_rel[:3],
+        -d_trans * twist_rel[3:]
+    ))
+
+    # Total control wrench
+    return W_spring + W_damping
 
 
 def control_torque(J_ee, wrench) -> np.ndarray:
@@ -111,11 +176,14 @@ def control_torque(J_ee, wrench) -> np.ndarray:
     """
     J_ee = np.asarray(J_ee, dtype=float)
     wrench = np.asarray(wrench, dtype=float)
+
     if wrench.shape != (6,):
         raise ValueError(f"expected a wrench of shape (6,), got {wrench.shape}")
 
-    # Fill in your solution here.
-    raise NotImplementedError("control_torque is not implemented yet")
+    # Jacobian transpose mapping (Equation 10)
+    tau = J_ee.T @ wrench
+
+    return tau
 
 
 def joint_speed_guard(tau, qvel, torque_limits, *, soft_speed: float, max_speed: float):

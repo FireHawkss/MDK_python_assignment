@@ -27,9 +27,9 @@ units:
 # H_0^w : pose of the base frame Psi_0 in the world frame
 # pos = 0,0,0
 # rot = 0 0 0 -1
-H_0_w: [[-1, 0, 0, 0],
-        [0, -1, 0, 0],
-        [0, 0, 1, 0],
+H_0_w: [[1, 0, 0, 0],
+        [0, 0, -1, 0],
+        [0, 1, 0, 0],
         [0, 0, 0, 1]]
 
 # Joints 1..n, ordered from base to tip.
@@ -39,48 +39,48 @@ joints:
 
   - name: shoulder_pan
     H_ref: [[1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0.163],
+            [0, 1, 0, 0.163],
+            [0, 0, 1, 0],
             [0, 0, 0, 1]]
-    unit_twist: [0, 0, 1, 0, 0, 0]
+    unit_twist: [0, 1, 0, 0, 0, 0]
 
   - name: shoulder_lift
     H_ref: [[1, 0, 0, 0],
             [0, 1, 0, 0],
-            [0, 0, 1, 0],
+            [0, 0, 1, 0.134],
             [0, 0, 0, 1]]
-    unit_twist: [0, 0, 0, 0, 0, 0]
+    unit_twist: [0, 0, 1, 0, 0, 0]
 
   - name: elbow
-    H_ref: [[1, 0, 0, 0],
+    H_ref: [[1, 0, 0, -0.425],
             [0, 1, 0, 0],
             [0, 0, 1, 0],
             [0, 0, 0, 1]]
-    unit_twist: [0, 0, 0, 0, 0, 0]
+    unit_twist: [0, 0, 1, 0, 0, 0]
 
   - name: wrist_1
-    H_ref: [[1, 0, 0, 0],
+    H_ref: [[1, 0, 0, -0.392],
             [0, 1, 0, 0],
-            [0, 0, 1, 0],
+            [0, 0, 1, -0.134],
             [0, 0, 0, 1]]
-    unit_twist: [0, 0, 0, 0, 0, 0]
+    unit_twist: [0, 0, 1, 0, 0, 0]
 
   - name: wrist_2
     H_ref: [[1, 0, 0, 0],
             [0, 1, 0, 0],
-            [0, 0, 1, 0],
+            [0, 0, 1, 0.134],
             [0, 0, 0, 1]]
-    unit_twist: [0, 0, 0, 0, 0, 0]
+    unit_twist: [0, -1, 0, 0, 0, 0]
 
   - name: wrist_3
     H_ref: [[1, 0, 0, 0],
-            [0, 1, 0, 0],
+            [0, 1, 0, -0.100],
             [0, 0, 1, 0],
             [0, 0, 0, 1]]
-    unit_twist: [0, 0, 0, 0, 0, 0]
+    unit_twist: [0, 0, 1, 0, 0, 0]
 
 # H_ee^n : pose of the end-effector frame Psi_ee relative to the last link frame Psi_n.
 H_ee_n: [[1, 0, 0, 0],
          [0, 1, 0, 0],
-         [0, 0, 1, 0],
+         [0, 0, 1, 0.100],
          [0, 0, 0, 1]]

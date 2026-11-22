@@ -4,6 +4,22 @@ The goal of this assignment is to make the end-effector of a robot arm track the
 
 The full assignment — the tasks and the submission — is described in `assignment.pdf`. This README repeats its introduction and serves as a quick reference for setting up the project and running the scripts.
 
+## Quick start
+
+Run these commands from the folder containing `environment.yml`:
+
+```bash
+conda env create -f environment.yml       # once: create the environment
+conda activate mdk-assignment             # each new terminal: activate it
+python -c "import mujoco; print(mujoco.__version__)"  # check it works
+python scripts/01_view_robot.py           # open the robot viewer (Linux/Windows)
+conda deactivate                          # when finished
+```
+
+On macOS, use `mjpython` instead of `python` for scripts that open a viewer. The other scripts are `02_check_frames_reference.py`, `03_check_forward_kinematics.py`, and `04_track_static_target.py` (viewer), plus `05_record_static_target.py` and `06_record_figure_eight.py` (video recording; use `python` on all platforms). Run them as `python scripts/<filename>` or `mjpython scripts/<filename>` as appropriate.
+
+To update an existing environment after dependency changes, run `conda env update -f environment.yml --prune`. If `conda` is unavailable, see the installation steps below.
+
 ## Introduction
 
 The differential kinematics of a serial robot is described by its geometric Jacobian. Given a coordinate frame $\Psi_c$, the geometric Jacobian in that frame is the linear map

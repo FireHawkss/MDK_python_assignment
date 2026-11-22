@@ -10,10 +10,13 @@ allocated once per chain and refilled by `update_kinematics` at each new
 configuration.
 """
 
+from pyexpat import model
+
 import numpy as np
 
 from assignment.kinematics_io import ChainModel
 # Add any other necessary imports from lie_groups if needed.
+from assignment.student.lie_groups import so3_exp, skew, unskew, se3_inverse, se3_exp
 
 
 
@@ -44,6 +47,9 @@ class ChainData:
         self.J_ee = np.empty((6, model.n))
 
 
+
+
+
 def update_kinematics(model: ChainModel, data: ChainData, q) -> None:
     """Fill `data` with the kinematics of `model` at the configuration `q`.
 
@@ -56,5 +62,27 @@ def update_kinematics(model: ChainModel, data: ChainData, q) -> None:
     if q.shape != (model.n,):
         raise ValueError(f"expected {model.n} joint variables, got shape {q.shape}")
 
-    # Fill in your solution here.
-    raise NotImplementedError("update_kinematics is not implemented yet")
+    data.q = q
+    data.H_link_w[0] = model.H_0_w
+
+    for i in range(model.n):
+        data.H_rel[i] = model.H_ref[i] @ se3_exp(model.unit_twists[i] * q[i])
+        data.H_link_w[i + 1] = data.H_link_w[i] @ data.H_rel[i]
+
+    data.H_ee_w = data.H_link_w[model.n] @ model.H_ee_n #model.n = 6 --> 7th link frame
+
+    # World frame relative to end-effector
+    H_w_ee = se3_inverse(data.H_ee_w)
+
+    for i in range(model.n):
+        H_i_ee = H_w_ee @ data.H_link_w[i + 1]
+
+        R = H_i_ee[:3, :3]
+        p = H_i_ee[:3, 3]
+
+        Ad = np.block([
+            [R,                np.zeros((3, 3))],
+            [skew(p) @ R,      R]
+        ])
+
+        data.J_ee[:, i] = Ad @ model.unit_twists[i]
